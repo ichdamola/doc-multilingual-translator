@@ -1,22 +1,52 @@
 import argparse
 from transformers import MarianMTModel, MarianTokenizer
 import os
+import re
+
+# Function to preprocess text
+def preprocess_text(text):
+    """
+    Cleans input text by removing unsupported characters and normalizing whitespace.
+    """
+    text = re.sub(r'[^\w\s.,?!]', '', text)  # Remove unsupported characters
+    text = re.sub(r'\s+', ' ', text)         # Normalize whitespace
+    return text.strip()
 
 # Function to load the model and tokenizer for the specified language pair
 def load_model_and_tokenizer(language_pair):
-    model_name = f"Helsinki-NLP/opus-mt-{language_pair}"
-    tokenizer = MarianTokenizer.from_pretrained(model_name)
-    model = MarianMTModel.from_pretrained(model_name)
-    return tokenizer, model
+    """
+    Loads the MarianMT model and tokenizer for a specific language pair.
+    """
+    try:
+        model_name = f"Helsinki-NLP/opus-mt-{language_pair}"
+        tokenizer = MarianTokenizer.from_pretrained(model_name)
+        model = MarianMTModel.from_pretrained(model_name)
+        return tokenizer, model
+    except Exception as e:
+        print(f"Error loading model for {language_pair}: {e}")
+        raise
 
 # Function to translate text
 def translate_text(text, tokenizer, model):
-    inputs = tokenizer(text, return_tensors="pt", padding=True)
+    """
+    Translates the given text using the specified tokenizer and model.
+    """
+    # Preprocess the text
+    text = preprocess_text(text)
+    # Tokenize the input with padding and truncation
+    inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
+    # Debug: Print tokenized inputs
+    print("Tokenized Inputs:", inputs)
+    # Generate translation
     translated = model.generate(**inputs)
+    # Decode the translated text
     return tokenizer.decode(translated[0], skip_special_tokens=True)
 
 # Main translation function
 def translate_file(input_file, output_dir, language_pairs):
+    """
+    Translates the contents of the input file into the specified target languages.
+    """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -75,4 +105,3 @@ if __name__ == "__main__":
     else:
         # Perform translation
         translate_file(input_file, output_dir, language_pairs)
-
